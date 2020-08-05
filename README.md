@@ -20,4 +20,5 @@ I try to implement the async Rpc response with `async` --> `std::future::Future`
 I thought it's the same compatibility problem between `tokio = 0.2` and `futures = 0.1`, BUT if I change the transport to `jsonrpc-http-sever`(feature in the `example/Cargo.toml`), it works fine.
 
 The screen shot picture shows the subsequent requests will not be processed until the preceding async finished.
+
 ![Screenshot](https://github.com/unpluggedcoder/rust-jsonrpc-example/blob/master/screenshot.jpg)
