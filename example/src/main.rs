@@ -15,7 +15,10 @@ use std::time::Duration;
 
 use jsonrpc_core::{self, types, BoxFuture, MetaIoHandler, Metadata, Result};
 use jsonrpc_derive::rpc;
+#[cfg(feature = "http-server")]
 use jsonrpc_http_server::{hyper, ServerBuilder};
+#[cfg(not(feature = "http-server"))]
+use jsonrpc_tcp_server::{RequestContext, ServerBuilder};
 use tokio::runtime;
 use tokio::sync::mpsc::{self, Sender, UnboundedSender};
 
@@ -40,6 +43,10 @@ pub trait Rpc {
     /// Performs asynchronous operation
     #[rpc(meta, name = "beFancy")]
     fn call(&self, meta: Self::Metadata) -> BoxFuture<usize>;
+
+    /// Ping method
+    #[rpc(name = "ping")]
+    fn ping(&self) -> Result<String>;
 }
 
 #[derive(Default, Clone)]
@@ -56,13 +63,18 @@ impl Rpc for RpcImpl {
         }
 
         let resp_fut = async move {
-            match rx.recv().await {  // Block at here
+            match rx.recv().await {
+                // Block at here
                 Some(id) => Ok(id),
                 None => Err(types::Error::new(types::ErrorCode::InternalError)),
             }
         };
 
         async_wait(resp_fut)
+    }
+
+    fn ping(&self) -> Result<String> {
+        Ok("Pong".to_string())
     }
 }
 
@@ -84,15 +96,23 @@ fn main() {
 
         io.extend_with(rpc.to_delegate());
 
-        let _server = ServerBuilder::new(io)
-            .meta_extractor(move |_: &hyper::Request<hyper::Body>| {
-                info!("Meta extractor called.");
-                Meta(Some(broker_sender.clone()))
-            })
-            .start_http(&"127.0.0.1:9527".parse().unwrap())
-            .expect("Unable to start RPC server");
+        // Http server is ok
+        // let _server = ServerBuilder::new(io)
+        //     .meta_extractor(move |_: &hyper::Request<hyper::Body>| {
+        //         info!("Meta extractor called.");
+        //         Meta(Some(broker_sender.clone()))
+        //     })
+        //     .start_http(&"0.0.0.0:9527".parse().unwrap())
+        //     .expect("Unable to start RPC server");
 
-        _server.wait();
+        // _server.wait();
+
+        let server = ServerBuilder::with_meta_extractor(io, move |_: &RequestContext| {
+            Meta(Some(broker_sender.clone()))
+        })
+        .start(&"0.0.0.0:9527".parse().unwrap())
+        .expect("Unable to start RPC server");
+        server.wait();
     });
 
     rt.block_on(async move {
@@ -102,7 +122,7 @@ fn main() {
             if let Some((id, mut sender)) = broker_receiver.recv().await {
                 info!("Broker received: id({}).", id);
                 // Sleep for awhile
-                thread::sleep(Duration::from_secs(1));
+                thread::sleep(Duration::from_secs(10));
 
                 sender.send(id * id).await.unwrap();
                 info!("Broker sent: id({})", id);
