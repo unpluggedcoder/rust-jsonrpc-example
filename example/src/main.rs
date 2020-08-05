@@ -97,21 +97,22 @@ fn main() {
         io.extend_with(rpc.to_delegate());
 
         // Http server is ok
-        // let _server = ServerBuilder::new(io)
-        //     .meta_extractor(move |_: &hyper::Request<hyper::Body>| {
-        //         info!("Meta extractor called.");
-        //         Meta(Some(broker_sender.clone()))
-        //     })
-        //     .start_http(&"0.0.0.0:9527".parse().unwrap())
-        //     .expect("Unable to start RPC server");
+        #[cfg(feature = "http-server")]
+        let server = ServerBuilder::new(io)
+            .meta_extractor(move |_: &hyper::Request<hyper::Body>| {
+                info!("Meta extractor called.");
+                Meta(Some(broker_sender.clone()))
+            })
+            .start_http(&"0.0.0.0:9527".parse().unwrap())
+            .expect("Unable to start RPC server");
 
-        // _server.wait();
-
+        #[cfg(not(feature = "http-server"))]
         let server = ServerBuilder::with_meta_extractor(io, move |_: &RequestContext| {
             Meta(Some(broker_sender.clone()))
         })
         .start(&"0.0.0.0:9527".parse().unwrap())
         .expect("Unable to start RPC server");
+
         server.wait();
     });
 
