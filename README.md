@@ -19,4 +19,4 @@ I try to implement the async Rpc response with `async` --> `std::future::Future`
 
 I thought it same compatibility problem between `tokio = 0.2` and `futures = 0.1`.
 
-BUT if I change the transport to `jsonrpc-http-sever`, it works fine.
+BUT if I change the transport to `jsonrpc-http-sever`(feature in the `example/Cargo.toml`), it works fine.
