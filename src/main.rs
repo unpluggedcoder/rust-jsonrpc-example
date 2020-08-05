@@ -56,7 +56,7 @@ impl Rpc for RpcImpl {
         }
 
         let resp_fut = async move {
-            match rx.recv().await {
+            match rx.recv().await {  // Block at here
                 Some(id) => Ok(id),
                 None => Err(types::Error::new(types::ErrorCode::InternalError)),
             }
